@@ -217,7 +217,7 @@ int main() {
     while (1) {
         monitor_sensors();
         send_sensor_data(); // Envia a cada 5s
-        sleep_ms(5000);
+        sleep_ms(1000);
     }
 
     cyw43_arch_deinit();
