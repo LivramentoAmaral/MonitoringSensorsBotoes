@@ -5,8 +5,6 @@ Este projeto é uma aplicação em **React** que exibe em tempo real os dados re
 
 ## 📸 Imagem da Interface
 
-> Coloque a imagem `dashboard-preview.png` na pasta `public/` da aplicação.
-
 ![Interface do Dashboard](./public/dashboard-preview.png)
 
 ---
