@@ -1,6 +1,4 @@
-Claro! Abaixo está o conteúdo completo do `README.md` em **Markdown**, pronto para copiar e colar no seu projeto:
 
-```markdown
 # Dashboard de Sensores - React
 
 Este projeto é uma aplicação em **React** que exibe em tempo real os dados recebidos de sensores, incluindo o estado de dois botões, a leitura da temperatura e a direção de um joystick. Os dados são atualizados automaticamente a cada 5 segundos a partir de uma API backend.
@@ -40,15 +38,9 @@ Este projeto é uma aplicação em **React** que exibe em tempo real os dados re
 ```
 
 📦 src/
-┣ 📜 App.jsx               # Componente principal com layout e chamadas à API
-┣ 📜 TemperatureChart.jsx # Componente de gráfico da temperatura
+┣ 📜 App.js               # Componente principal com layout e chamadas à API
+┣ 📜 TemperatureChart.js # Componente de gráfico da temperatura
 ┣ 📜 theme.js              # Customização do tema Material UI
-┣ 📦 assets/               # Imagens e recursos visuais
-📜 public/
-┣ 📷 dashboard-preview\.png # Imagem de visualização do dashboard
-📜 README.md
-📜 package.json
-
 ````
 
 ---
@@ -59,7 +51,7 @@ Este projeto é uma aplicação em **React** que exibe em tempo real os dados re
 
 ```bash
 git clone https://github.com/SeuUsuario/SeuRepositorio.git
-cd SeuRepositorio
+cd pasta do Repositorio
 ````
 
 ### 2. Instale as dependências
