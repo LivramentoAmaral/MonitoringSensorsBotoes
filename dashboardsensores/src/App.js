@@ -14,6 +14,7 @@ import {
 import axios from 'axios';
 import theme from './theme';
 import TemperatureChart from './TemperatureChart';
+import { format } from 'date-fns';
 
 const drawerWidth = 240;
 
@@ -40,10 +41,6 @@ export default function App() {
   }, []);
 
   const ultimo = dados[0];
-  const chartData = dados.map(item => ({
-    time: item.data,
-    temperaturaValue: parseFloat(item.temperatura)
-  }));
 
   return (
     <ThemeProvider theme={theme}>
@@ -51,23 +48,25 @@ export default function App() {
       <Box sx={{ display: 'flex' }}>
         <AppBar position="fixed" sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: drawerWidth }}>
           <Toolbar>
-            <IconButton edge="start" color="inherit" onClick={() => setOpen(!open)} sx={{ mr:2 }}>
+            <IconButton edge="start" color="inherit" onClick={() => setOpen(!open)} sx={{ mr: 2 }}>
               <MenuIcon />
             </IconButton>
-            <SensorsIcon sx={{ mr:1 }} />
+            <SensorsIcon sx={{ mr: 1 }} />
             <Typography variant="h6">Dashboard de Sensores</Typography>
           </Toolbar>
         </AppBar>
 
-        <Drawer variant="permanent" open={open}
-                sx={{
-                  width: drawerWidth,
-                  '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
-                }}>
+        <Drawer
+          variant="permanent"
+          open={open}
+          sx={{
+            width: drawerWidth,
+            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
+          }}>
           <Toolbar />
           <List>
-            {['Visão Geral','Sensores','Configurações'].map((text, idx) => {
-              const icons = [<DashboardIcon/>, <SensorsIcon/>, <ThermostatIcon/>];
+            {['Visão Geral', 'Sensores', 'Configurações'].map((text, idx) => {
+              const icons = [<DashboardIcon />, <SensorsIcon />, <ThermostatIcon />];
               return (
                 <ListItem button key={text}>
                   <ListItemIcon>{icons[idx]}</ListItemIcon>
@@ -78,25 +77,25 @@ export default function App() {
           </List>
         </Drawer>
 
-        <Box component="main" sx={{ flexGrow:1, p:3, mt:8 }}>
+        <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
           <Container maxWidth="lg">
             {loading ? (
-              <Box sx={{ display:'flex', justifyContent:'center', mt:10 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
                 <CircularProgress />
               </Box>
             ) : (
               <>
                 <Grid container spacing={3}>
                   <Grid item xs={12} md={4}>
-                    <Card sx={{ position:'relative' }}>
+                    <Card sx={{ position: 'relative' }}>
                       <Badge
                         badgeContent={ultimo?.botao1 === 'pressionado' ? 'ON' : 'OFF'}
                         color={ultimo?.botao1 === 'pressionado' ? 'success' : 'error'}
-                        sx={{ position:'absolute', top:16, right:16 }}
+                        sx={{ position: 'absolute', top: 16, right: 16 }}
                       />
                       <CardContent>
                         <Typography variant="h6" gutterBottom>
-                          <SensorsIcon sx={{ verticalAlign:'middle', mr:1 }} /> Botão 1
+                          <SensorsIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Botão 1
                         </Typography>
                         <Typography variant="h4">{ultimo?.botao1}</Typography>
                       </CardContent>
@@ -104,15 +103,15 @@ export default function App() {
                   </Grid>
 
                   <Grid item xs={12} md={4}>
-                    <Card sx={{ position:'relative' }}>
+                    <Card sx={{ position: 'relative' }}>
                       <Badge
                         badgeContent={ultimo?.botao2 === 'pressionado' ? 'ON' : 'OFF'}
                         color={ultimo?.botao2 === 'pressionado' ? 'success' : 'error'}
-                        sx={{ position:'absolute', top:16, right:16 }}
+                        sx={{ position: 'absolute', top: 16, right: 16 }}
                       />
                       <CardContent>
                         <Typography variant="h6" gutterBottom>
-                          <SensorsIcon sx={{ verticalAlign:'middle', mr:1 }} /> Botão 2
+                          <SensorsIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Botão 2
                         </Typography>
                         <Typography variant="h4">{ultimo?.botao2}</Typography>
                       </CardContent>
@@ -123,7 +122,7 @@ export default function App() {
                     <Card>
                       <CardContent>
                         <Typography variant="h6" gutterBottom>
-                          <ThermostatIcon sx={{ verticalAlign:'middle', mr:1 }} /> Temperatura
+                          <ThermostatIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Temperatura
                         </Typography>
                         <Typography variant="h4">{ultimo?.temperatura}</Typography>
                       </CardContent>
@@ -134,7 +133,7 @@ export default function App() {
                     <Card>
                       <CardContent>
                         <Typography variant="h6" gutterBottom>
-                          <JoystickIcon sx={{ verticalAlign:'middle', mr:1 }} /> Direção
+                          <JoystickIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Direção
                         </Typography>
                         <Typography variant="h4">{ultimo?.joystick?.direcao}</Typography>
                       </CardContent>
@@ -143,7 +142,8 @@ export default function App() {
                 </Grid>
 
                 {/* Gráfico de Temperatura */}
-                <TemperatureChart data={chartData} />
+                <TemperatureChart dados={dados} />
+
               </>
             )}
           </Container>

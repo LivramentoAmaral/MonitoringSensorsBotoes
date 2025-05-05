@@ -125,7 +125,7 @@ void send_sensor_data() {
         "    \"y\": %d,\n"
         "    \"direcao\": \"%s\"\n"
         "  },\n"
-        "  \"data\": \"%s\"\n"
+        "  \"data\": \"\"\n"
         "}",
         button1_message, button2_message, temperature_message,
         joy_x, joy_y, joystick_direction, iso_date
@@ -216,7 +216,7 @@ int main() {
 
     while (1) {
         monitor_sensors();
-        send_sensor_data(); // Envia a cada 5s
+        send_sensor_data(); // Envia a cada 3s
         sleep_ms(3000);
     }
 
