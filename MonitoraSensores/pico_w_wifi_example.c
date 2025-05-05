@@ -14,9 +14,9 @@
 #define JOYSTICK_Y_PIN 26
 
 // Wi-Fi e servidor
-#define WIFI_SSID "...."
-#define WIFI_PASS "#tudoepossivel"
-#define SERVER_IP "192.168.1.109"
+#define WIFI_SSID "Marcos"
+#define WIFI_PASS "98765432"
+#define SERVER_IP "192.168.142.62"
 #define SERVER_PORT 5000
 #define API_ENDPOINT "/api/sensores/"
 
@@ -48,18 +48,22 @@ const char* map_joystick_to_direction(int x, int y) {
     return "Centro";
 }
 
-// Leitura da temperatura
+// Leitura da temperatura em Celsius
 float read_temperature_celsius() {
-    adc_select_input(4);
+    adc_select_input(4); // Sensor de temperatura interno
     uint16_t raw = adc_read();
-    float voltage = raw * 3.3f / 4096;
-    float temp = 27.0f - (voltage - 0.706f) / 0.001721f;
-    return (temp < -10.0f || temp > 100.0f) ? NAN : temp;
+    float voltage = raw * 3.3f / 4095.0f;
+    float temp_celsius = 27.0f - (voltage - 0.706f) / 0.001721f;
+
+    // Debug
+    float temp_fahrenheit = temp_celsius * 9.0f / 5.0f + 32.0f;
+    printf("ADC Raw: %d | Tensão: %.4f V | Temp: %.2f °C | %.2f °F\n", raw, voltage, temp_celsius, temp_fahrenheit);
+
+    return (temp_celsius < -10.0f || temp_celsius > 100.0f) ? NAN : temp_celsius;
 }
 
 // Gera timestamp no formato ISO 8601 fixo (simulado)
 void get_iso8601_timestamp(char *buffer, size_t size) {
-    // Simulando "2025-04-30T12:34:56.789Z"
     snprintf(buffer, size, "2025-04-30T12:34:56.789Z");
 }
 
@@ -171,7 +175,6 @@ void send_sensor_data() {
     }
 }
 
-
 // Lê os sensores e atualiza as variáveis globais
 void monitor_sensors() {
     bool b1 = !gpio_get(BUTTON1_PIN);
@@ -185,6 +188,7 @@ void monitor_sensors() {
     joy_y = adc_read();
 
     snprintf(joystick_direction, sizeof(joystick_direction), "%s", map_joystick_to_direction(joy_x, joy_y));
+
     float temp = read_temperature_celsius();
     if (!isnan(temp)) {
         snprintf(temperature_message, sizeof(temperature_message), "%.2f °C", temp);
@@ -210,9 +214,13 @@ int main() {
     }
 
     printf("WiFi conectado. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_list)));
+
     gpio_init(BUTTON1_PIN); gpio_set_dir(BUTTON1_PIN, GPIO_IN); gpio_pull_up(BUTTON1_PIN);
     gpio_init(BUTTON2_PIN); gpio_set_dir(BUTTON2_PIN, GPIO_IN); gpio_pull_up(BUTTON2_PIN);
-    adc_init(); adc_gpio_init(JOYSTICK_X_PIN); adc_gpio_init(JOYSTICK_Y_PIN);
+    adc_init();
+    adc_set_temp_sensor_enabled(true); // ATIVA sensor interno
+    adc_gpio_init(JOYSTICK_X_PIN);
+    adc_gpio_init(JOYSTICK_Y_PIN);
 
     while (1) {
         monitor_sensors();

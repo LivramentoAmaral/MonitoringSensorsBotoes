@@ -1,22 +1,28 @@
-import React, { useEffect, useState } from 'react';
 import {
-  ThemeProvider, CssBaseline, Box, Drawer, AppBar, Toolbar,
-  List, ListItem, ListItemIcon, ListItemText, IconButton,
-  Typography, Container, Grid, Card, CardContent, Badge, CircularProgress
-} from '@mui/material';
-import {
+  RadioButtonChecked as JoystickIcon,
   Menu as MenuIcon,
-  Dashboard as DashboardIcon,
   Sensors as SensorsIcon,
-  Thermostat as ThermostatIcon,
-  RadioButtonChecked as JoystickIcon
+  Thermostat as ThermostatIcon
 } from '@mui/icons-material';
+import {
+  AppBar,
+  Badge,
+  Box,
+  Card, CardContent,
+  CircularProgress,
+  Container,
+  CssBaseline,
+  Grid,
+  IconButton,
+  ThemeProvider,
+  Toolbar,
+  Typography
+} from '@mui/material';
 import axios from 'axios';
-import theme from './theme';
+import React, { useEffect, useState } from 'react';
 import TemperatureChart from './TemperatureChart';
-import { format } from 'date-fns';
+import theme from './theme';
 
-const drawerWidth = 240;
 
 export default function App() {
   const [open, setOpen] = useState(false);
@@ -46,7 +52,7 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: 'flex' }}>
-        <AppBar position="fixed" sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: drawerWidth }}>
+        <AppBar  sx={{ width:"100%" }}>
           <Toolbar>
             <IconButton edge="start" color="inherit" onClick={() => setOpen(!open)} sx={{ mr: 2 }}>
               <MenuIcon />
@@ -56,26 +62,6 @@ export default function App() {
           </Toolbar>
         </AppBar>
 
-        <Drawer
-          variant="permanent"
-          open={open}
-          sx={{
-            width: drawerWidth,
-            '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' }
-          }}>
-          <Toolbar />
-          <List>
-            {['Visão Geral', 'Sensores', 'Configurações'].map((text, idx) => {
-              const icons = [<DashboardIcon />, <SensorsIcon />, <ThermostatIcon />];
-              return (
-                <ListItem button key={text}>
-                  <ListItemIcon>{icons[idx]}</ListItemIcon>
-                  <ListItemText primary={text} />
-                </ListItem>
-              );
-            })}
-          </List>
-        </Drawer>
 
         <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
           <Container maxWidth="lg">
@@ -141,7 +127,6 @@ export default function App() {
                   </Grid>
                 </Grid>
 
-                {/* Gráfico de Temperatura */}
                 <TemperatureChart dados={dados} />
 
               </>

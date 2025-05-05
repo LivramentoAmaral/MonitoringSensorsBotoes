@@ -29,9 +29,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-
-
-
 // Rota GET para listar todos os dados
 router.get('/', async (req, res) => {
   try {

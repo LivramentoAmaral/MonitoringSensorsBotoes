@@ -3,8 +3,6 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { Paper, Typography } from '@mui/material';
 
 export default function TemperatureChart({ dados }) {
-  console.log("Dados recebidos:", dados);
-
   const dataFiltrada = dados
     .filter(item => {
       // Garante que a data e temperatura existam e sejam válidas
