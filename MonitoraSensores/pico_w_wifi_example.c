@@ -105,13 +105,23 @@ static err_t tcp_connected_cb(void *arg, struct tcp_pcb *pcb, err_t err) {
     }
 
     conn->connected = true;
-    tcp_arg(pcb, conn);
+
     tcp_recv(pcb, tcp_recv_cb);
     tcp_sent(pcb, tcp_sent_cb);
-    tcp_write(pcb, conn->data, conn->len, TCP_WRITE_FLAG_COPY);
+
+    err_t wr_err = tcp_write(pcb, conn->data, conn->len, TCP_WRITE_FLAG_COPY);
+    if (wr_err != ERR_OK) {
+        printf("Erro ao escrever dados TCP: %d\n", wr_err);
+        tcp_abort(pcb);
+        mem_free(conn->data);
+        mem_free(conn);
+        return wr_err;
+    }
+
     tcp_output(pcb);
     return ERR_OK;
 }
+
 
 // Envia os dados em formato JSON
 void send_sensor_data() {
@@ -163,6 +173,7 @@ void send_sensor_data() {
     conn->pcb = pcb;
     conn->connected = false;
 
+    // Configure callbacks antes da conexão
     tcp_arg(pcb, conn);
     tcp_err(pcb, tcp_error_cb);
 
@@ -174,6 +185,7 @@ void send_sensor_data() {
         tcp_abort(pcb);
     }
 }
+
 
 // Lê os sensores e atualiza as variáveis globais
 void monitor_sensors() {
