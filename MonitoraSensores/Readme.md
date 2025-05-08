@@ -82,19 +82,6 @@ float read_temperature_celsius() {
     return (temp_celsius < -10.0f || temp_celsius > 100.0f) ? NAN : temp_celsius;  // Se a temperatura estiver fora da faixa válida, retorna "não numérico"
 }
 ```
-
-Essa função lê o valor do sensor de temperatura da Raspberry Pi Pico e converte o valor analógico para uma temperatura em Celsius. A função retorna a temperatura ou `NAN` se a leitura estiver fora da faixa válida.
-
-## Função `get_iso8601_timestamp`
-
-```c
-void get_iso8601_timestamp(char *buffer, size_t size) {
-    snprintf(buffer, size, "2025-04-30T12:34:56.789Z");
-}
-```
-
-A função `get_iso8601_timestamp` gera um timestamp no formato ISO 8601. Aqui, ele usa um valor fixo, mas poderia ser modificado para usar a data e hora reais do sistema.
-
 ## Funções de Callback TCP
 
 As funções de callback lidam com o fluxo de comunicação TCP entre a Raspberry Pi Pico e o servidor. Essas funções são configuradas para:
@@ -229,7 +216,7 @@ int main() {
     while (true) {
         monitor_sensors();
         send_sensor_data();
-        sleep_ms(5000);  // Intervalo de 5 segundos entre cada envio
+        sleep_ms(3000);  // Intervalo de 5 segundos entre cada envio
     }
 }
 ```
