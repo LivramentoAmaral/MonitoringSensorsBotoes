@@ -221,8 +221,8 @@ int main() {
 }
 ```
 
-A função `main` inicializa a Raspberry Pi Pico, conecta-se ao Wi-Fi e entra em um loop onde lê os dados dos sensores e os envia para o servidor a cada 5 segundos.
+A função `main` inicializa a Raspberry Pi Pico, conecta-se ao Wi-Fi e entra em um loop onde lê os dados dos sensores e os envia para o servidor a cada 3 segundos.
 
 ## Resumo
 
-Este código permite monitorar os estados de botões, a posição de um joystick e a temperatura interna da Raspberry Pi Pico W. Os dados são enviados a cada 5 segundos para um servidor via TCP, utilizando o protocolo HTTP.
+Este código permite monitorar os estados de botões, a posição de um joystick e a temperatura interna da Raspberry Pi Pico W. Os dados são enviados a cada 3 segundos para um servidor via TCP, utilizando o protocolo HTTP.
