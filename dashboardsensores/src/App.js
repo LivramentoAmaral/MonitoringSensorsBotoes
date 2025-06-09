@@ -1,22 +1,15 @@
+// src/App.js
+import '@fontsource/orbitron';
 import {
   RadioButtonChecked as JoystickIcon,
   Menu as MenuIcon,
   Sensors as SensorsIcon,
-  Thermostat as ThermostatIcon
+  Thermostat as ThermostatIcon,
+  PowerSettingsNew as PowerIcon
 } from '@mui/icons-material';
 import {
-  AppBar,
-  Badge,
-  Box,
-  Card, CardContent,
-  CircularProgress,
-  Container,
-  CssBaseline,
-  Grid,
-  IconButton,
-  ThemeProvider,
-  Toolbar,
-  Typography
+  AppBar, Badge, Box, Card, CardContent, CircularProgress, Container,
+  CssBaseline, Grid, IconButton, ThemeProvider, Toolbar, Typography
 } from '@mui/material';
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
@@ -27,13 +20,14 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [dados, setDados] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [direcaoAnterior, setDirecaoAnterior] = useState(null);
 
   const fetchDados = async () => {
     try {
       const { data } = await axios.get('http://localhost:5000/api/sensores');
       setDados(data);
     } catch (err) {
-      console.error(err);
+      console.error('Erro ao buscar dados:', err);
     } finally {
       setLoading(false);
     }
@@ -45,96 +39,127 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const ultimo = dados && dados.length > 0 ? dados[0] : null;
+  const ultimo = dados.length > 0 ? dados[0] : null;
+
+  useEffect(() => {
+    if (ultimo?.joystick?.direcao && ultimo.joystick.direcao !== direcaoAnterior) {
+      setDirecaoAnterior(ultimo.joystick.direcao);
+    }
+  }, [ultimo]);
+
+  const cardStyle = {
+    minHeight: 180,
+    backgroundColor: '#1e1e1e',
+    color: '#00e5ff',
+    borderRadius: '12px',
+    transition: 'transform 0.3s ease-in-out',
+    '&:hover': { transform: 'scale(1.03)' }
+  };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex' }}>
-        <AppBar sx={{ width: "100%" }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <AppBar position="fixed" sx={{ backgroundColor: '#1f1f1f' }}>
           <Toolbar>
             <IconButton edge="start" color="inherit" onClick={() => setOpen(!open)} sx={{ mr: 2 }}>
               <MenuIcon />
             </IconButton>
             <SensorsIcon sx={{ mr: 1 }} />
-            <Typography variant="h6">Dashboard de Sensores</Typography>
+            <Typography variant="h6" noWrap>
+              Dashboard de Sensores
+            </Typography>
           </Toolbar>
         </AppBar>
 
-        <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
-          <Container maxWidth="lg">
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={4}>
-                    <Card sx={{ position: 'relative', minHeight: 150 ,minWidth:270}}>
+        <Container maxWidth="lg" sx={{ mt: 10, mb: 4 }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <Grid container spacing={4}>
+                <Grid item xs={12} md={3}>
+                  <Card sx={cardStyle}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                      <Typography variant="h6" gutterBottom>
+                        <PowerIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Botão 1
+                      </Typography>
                       {ultimo && (
                         <Badge
                           badgeContent={ultimo.botao1 === 'pressionado' ? 'ON' : 'OFF'}
                           color={ultimo.botao1 === 'pressionado' ? 'success' : 'error'}
-                          sx={{ position: 'absolute', top: 16, right: 16 }}
                         />
                       )}
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" gutterBottom>
-                          <SensorsIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Botão 1
-                        </Typography>
-                        <Typography variant="h4">{ultimo ? ultimo.botao1 : '--'}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
+                      <Typography variant="h4" sx={{ mt: 2 }}>
+                        {ultimo ? ultimo.botao1 : '--'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
 
-                  <Grid item xs={12} md={4}>
-                    <Card sx={{ position: 'relative', minHeight: 150, minWidth:270 }}>
+                <Grid item xs={12} md={3}>
+                  <Card sx={cardStyle}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                      <Typography variant="h6" gutterBottom>
+                        <PowerIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Botão 2
+                      </Typography>
                       {ultimo && (
                         <Badge
                           badgeContent={ultimo.botao2 === 'pressionado' ? 'ON' : 'OFF'}
                           color={ultimo.botao2 === 'pressionado' ? 'success' : 'error'}
-                          sx={{ position: 'absolute', top: 16, right: 16 }}
                         />
                       )}
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" gutterBottom>
-                          <SensorsIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Botão 2
-                        </Typography>
-                        <Typography variant="h4">{ultimo ? ultimo.botao2 : '--'}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  <Grid item xs={12} md={4}>
-                    <Card sx={{ minHeight: 150, minWidth:270 }}>
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" gutterBottom>
-                          <ThermostatIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Temperatura
-                        </Typography>
-                        <Typography variant="h4">{ultimo ? ultimo.temperatura : '--'}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-
-                  <Grid item xs={12} md={4}>
-                    <Card sx={{ minHeight: 150, minWidth:270 }}>
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" gutterBottom>
-                          <JoystickIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Direção
-                        </Typography>
-                        <Typography variant="h4">{ultimo?.joystick?.direcao || '--'}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
+                      <Typography variant="h4" sx={{ mt: 2 }}>
+                        {ultimo ? ultimo.botao2 : '--'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
                 </Grid>
 
-                {/* Gráfico de Temperatura */}
+                <Grid item xs={12} md={3}>
+                  <Card sx={cardStyle}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                      <Typography variant="h6" gutterBottom>
+                        <ThermostatIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Temperatura
+                      </Typography>
+                      <Typography variant="h4" sx={{ mt: 2 }}>
+                        {ultimo ? `${ultimo.temperatura}°C` : '--'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Card sx={cardStyle}>
+                    <CardContent sx={{ textAlign: 'center' }}>
+                      <Typography variant="h6" gutterBottom>
+                        <JoystickIcon
+                          sx={{
+                            verticalAlign: 'middle',
+                            mr: 1,
+                            transform: `rotate(${direcaoAnterior === 'direita' ? '90deg' :
+                              direcaoAnterior === 'esquerda' ? '-90deg' :
+                              direcaoAnterior === 'baixo' ? '180deg' : '0deg'})`,
+                            transition: 'transform 0.3s ease-in-out'
+                          }}
+                        /> Direção
+                      </Typography>
+                      <Typography variant="h4" sx={{ mt: 2 }}>
+                        {ultimo?.joystick?.direcao || '--'}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              <Box sx={{ mt: 6 }}>
                 <TemperatureChart dados={dados} />
-              </>
-            )}
-          </Container>
-        </Box>
+              </Box>
+            </>
+          )}
+        </Container>
       </Box>
     </ThemeProvider>
   );
