@@ -125,7 +125,7 @@ export default function App() {
                         <ThermostatIcon sx={{ verticalAlign: 'middle', mr: 1 }} /> Temperatura
                       </Typography>
                       <Typography variant="h4" sx={{ mt: 2 }}>
-                        {ultimo ? `${ultimo.temperatura}°C` : '--'}
+                        {ultimo ? `${ultimo.temperatura}` : '--'}
                       </Typography>
                     </CardContent>
                   </Card>
