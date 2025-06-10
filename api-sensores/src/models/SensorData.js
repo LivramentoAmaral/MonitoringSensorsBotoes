@@ -9,7 +9,7 @@ const SensorDataSchema = new mongoose.Schema({
     y: Number,
     direcao: String
   },
-  data: { type: Date, default: Date.now }
+  data: { type: Date, default: Date.now, required: false }
 });
 
 module.exports = mongoose.model('SensorData', SensorDataSchema);

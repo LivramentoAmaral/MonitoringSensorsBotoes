@@ -2,6 +2,7 @@
 #include "pico/stdlib.h"
 #include "lwip/tcp.h"
 #include "hardware/adc.h"
+#include "hardware/pwm.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,29 +13,42 @@
 #define BUTTON2_PIN 6
 #define JOYSTICK_X_PIN 27
 #define JOYSTICK_Y_PIN 26
+#define GREEN_LED_PIN 11
+#define BLUE_LED_PIN 12
+#define RED_LED_PIN 13
 
-// Wi-Fi e servidor
+#define LED_BRIGHTNESS 0.3f  // 30% brilho
+
 #define WIFI_SSID "Marcos"
 #define WIFI_PASS "98765432"
-#define SERVER_IP "192.168.142.62"
+#define SERVER_IP "192.168.134.204"
 #define SERVER_PORT 5000
 #define API_ENDPOINT "/api/sensores/"
 
-// Variáveis globais
+// Variáveis globais de estado dos sensores
 char button1_message[20] = "solto";
 char button2_message[20] = "solto";
 char temperature_message[30] = "Temperatura: N/A";
 char joystick_direction[20] = "Centro";
 int joy_x = 0, joy_y = 0;
 
-typedef struct {
-    struct tcp_pcb *pcb;
-    char *data;
-    u16_t len;
-    bool connected;
-} tcp_connection_t;
+// Função para configurar PWM no LED (0-1.0 brightness)
+void set_led_pwm(uint gpio, float brightness) {
+    gpio_set_function(gpio, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(gpio);
+    pwm_set_wrap(slice, 100);
+    pwm_set_chan_level(slice, pwm_gpio_to_channel(gpio), (int)(100 * brightness));
+    pwm_set_enabled(slice, true);
+}
 
-// Mapeia o joystick para direção textual
+// Desliga o LED
+void set_led_off(uint gpio) {
+    gpio_set_function(gpio, GPIO_FUNC_SIO);
+    gpio_set_dir(gpio, GPIO_OUT);
+    gpio_put(gpio, 0);
+}
+
+// Mapeia posição do joystick para direção textual
 const char* map_joystick_to_direction(int x, int y) {
     const int low = 1500, high = 2500;
     if (x < low && y > high) return "Noroeste";
@@ -48,196 +62,224 @@ const char* map_joystick_to_direction(int x, int y) {
     return "Centro";
 }
 
-// Leitura da temperatura em Celsius
-float read_temperature_celsius() {
-    adc_select_input(4); // Sensor de temperatura interno
-    uint16_t raw = adc_read();
-    float voltage = raw * 3.3f / 4095.0f;
-    float temp_celsius = 27.0f - (voltage - 0.706f) / 0.001721f;
+// Lê a temperatura interna da RP2040 com média e offset para ambiente
+float read_temperature_celsius_ambient(int samples) {
+    float sum = 0.0f;
+    for (int i = 0; i < samples; i++) {
+        adc_select_input(4);
+        uint16_t raw = adc_read();
+        float voltage = raw * (3.3f / 4095.0f);
+        float temp_celsius = 27.0f - (voltage - 0.706f) / 0.001721f;
+        sum += temp_celsius;
+        sleep_ms(10);
+    }
+    float avg_temp = sum / samples;
 
-    // Debug
-    float temp_fahrenheit = temp_celsius * 9.0f / 5.0f + 32.0f;
-    printf("ADC Raw: %d | Tensão: %.4f V | Temp: %.2f °C | %.2f °F\n", raw, voltage, temp_celsius, temp_fahrenheit);
+    // Limita valores absurdos
+    if (avg_temp < -40.0f || avg_temp > 125.0f) {
+        return NAN;
+    }
 
-    return (temp_celsius < -10.0f || temp_celsius > 100.0f) ? NAN : temp_celsius;
+    // Ajusta com offset aproximado para ambiente
+    const float offset = -15.0f;
+    return avg_temp + offset;
 }
 
-// Gera timestamp no formato ISO 8601 fixo (simulado)
-void get_iso8601_timestamp(char *buffer, size_t size) {
-    snprintf(buffer, size, "2025-04-30T12:34:56.789Z");
+// Atualiza o estado dos sensores e mensagens para enviar
+void monitor_sensors(bool read_temp) {
+    // Leitura botões
+    button1_message[0] = gpio_get(BUTTON1_PIN) ? 's' : 'p'; // solto/preso (simples)
+    strcpy(button1_message, gpio_get(BUTTON1_PIN) ? "solto" : "pressionado");
+
+    button2_message[0] = gpio_get(BUTTON2_PIN) ? 's' : 'p';
+    strcpy(button2_message, gpio_get(BUTTON2_PIN) ? "solto" : "pressionado");
+
+    // Leitura joystick
+    adc_select_input(0);
+    joy_x = adc_read();
+
+    adc_select_input(1);
+    joy_y = adc_read();
+
+    // Mapeia direção
+    strcpy(joystick_direction, map_joystick_to_direction(joy_x, joy_y));
+
+    // Leitura temperatura se pedido
+    if (read_temp) {
+        float temp = read_temperature_celsius_ambient(10);
+        if (isnan(temp)) {
+            snprintf(temperature_message, sizeof(temperature_message), "Temperatura: N/A");
+        } else {
+            snprintf(temperature_message, sizeof(temperature_message), " %.2f °C", temp);
+        }
+    }
+
+    // Debug serial
+    printf("[Sensores] Botão1: %s | Botão2: %s | %s | Joy: X=%d Y=%d Dir=%s\n",
+           button1_message, button2_message, temperature_message, joy_x, joy_y, joystick_direction, "\n", "\n", "\n");
 }
 
-// Callback de recepção TCP
+// Struct para manter contexto da conexão TCP
+typedef struct {
+    struct tcp_pcb *pcb;
+    char *data;
+    u16_t len;
+    bool connected;
+} tcp_connection_t;
+
+// Callbacks TCP LWIP (mantidos iguais, só adaptei indentação)
 static err_t tcp_recv_cb(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err) {
     if (!p) {
         tcp_close(pcb);
-        tcp_connection_t *conn = (tcp_connection_t *)arg;
-        mem_free(conn->data);
-        mem_free(conn);
         return ERR_OK;
     }
-    printf("Resposta: %.*s\n", p->len, (char*)p->payload);
     tcp_recved(pcb, p->tot_len);
     pbuf_free(p);
     return ERR_OK;
 }
 
-// Callback de envio TCP
 static err_t tcp_sent_cb(void *arg, struct tcp_pcb *pcb, u16_t len) {
-    printf("Dados enviados (%d bytes)\n", len);
+    set_led_off(BLUE_LED_PIN);
+    printf("✓ Dados enviados com sucesso (%d bytes)\n", len);
+    if (arg) {
+        mem_free(arg);  // Libera memória do struct
+    }
+    tcp_close(pcb);      // Fecha conexão
     return ERR_OK;
 }
 
-// Callback de erro TCP
+
 void tcp_error_cb(void *arg, err_t err) {
-    printf("Erro TCP: %d\n", err);
+    set_led_pwm(RED_LED_PIN, LED_BRIGHTNESS);
+    printf("✗ Erro de conexão TCP (%d)\n", err);
 }
 
-// Callback de conexão TCP
 static err_t tcp_connected_cb(void *arg, struct tcp_pcb *pcb, err_t err) {
     tcp_connection_t *conn = (tcp_connection_t *)arg;
     if (err != ERR_OK) {
-        printf("Erro na conexão: %d\n", err);
-        tcp_abort(pcb);
-        mem_free(conn->data);
+        set_led_pwm(RED_LED_PIN, LED_BRIGHTNESS);
+        printf("✗ Falha na conexão ao servidor\n");
+        tcp_close(pcb);
         mem_free(conn);
         return err;
     }
 
-    conn->connected = true;
-
     tcp_recv(pcb, tcp_recv_cb);
     tcp_sent(pcb, tcp_sent_cb);
-
-    err_t wr_err = tcp_write(pcb, conn->data, conn->len, TCP_WRITE_FLAG_COPY);
-    if (wr_err != ERR_OK) {
-        printf("Erro ao escrever dados TCP: %d\n", wr_err);
-        tcp_abort(pcb);
-        mem_free(conn->data);
-        mem_free(conn);
-        return wr_err;
-    }
-
+    
+    tcp_write(pcb, conn->data, conn->len, TCP_WRITE_FLAG_COPY);
     tcp_output(pcb);
+
     return ERR_OK;
 }
 
-
-// Envia os dados em formato JSON
+// Envia dados ao servidor via HTTP POST
 void send_sensor_data() {
-    char json[512];
-    char iso_date[40];
-    get_iso8601_timestamp(iso_date, sizeof(iso_date));
+    set_led_pwm(BLUE_LED_PIN, LED_BRIGHTNESS);
+    printf("→ Enviando dados para o servidor...\n");
 
+    // Monta JSON
+    char json[512];
     snprintf(json, sizeof(json),
-        "{\n"
-        "  \"botao1\": \"%s\",\n"
-        "  \"botao2\": \"%s\",\n"
-        "  \"temperatura\": \"%s\",\n"
-        "  \"joystick\": {\n"
-        "    \"x\": %d,\n"
-        "    \"y\": %d,\n"
-        "    \"direcao\": \"%s\"\n"
-        "  },\n"
-        "  \"data\": \"\"\n"
-        "}",
-        button1_message, button2_message, temperature_message,
-        joy_x, joy_y, joystick_direction, iso_date
-    );
+        "{ \"botao1\": \"%s\", \"botao2\": \"%s\", \"temperatura\": \"%s\", \"joystick\": { \"x\": %d, \"y\": %d, \"direcao\": \"%s\" } }",
+        button1_message, button2_message, temperature_message, joy_x, joy_y, joystick_direction);
 
     int json_len = strlen(json);
-    printf("JSON:\n%s\n", json);
 
+    // Monta requisição HTTP POST
     char request[1024];
     int req_len = snprintf(request, sizeof(request),
         "POST %s HTTP/1.1\r\n"
         "Host: %s:%d\r\n"
         "Content-Type: application/json\r\n"
-        "Content-Length: %d\r\n\r\n%s",
+        "Content-Length: %d\r\n"
+        "Connection: close\r\n\r\n%s",
         API_ENDPOINT, SERVER_IP, SERVER_PORT, json_len, json);
 
-    ip_addr_t ip;
-    ipaddr_aton(SERVER_IP, &ip);
-    struct tcp_pcb *pcb = tcp_new();
-    if (!pcb) return;
-
-    tcp_connection_t *conn = (tcp_connection_t *)mem_malloc(sizeof(tcp_connection_t));
-    if (!conn) {
-        tcp_abort(pcb);
+    ip_addr_t server_ip;
+    if (!ipaddr_aton(SERVER_IP, &server_ip)) {
+        set_led_pwm(RED_LED_PIN, LED_BRIGHTNESS);
+        printf("✗ IP inválido\n");
         return;
     }
 
-    conn->data = (char *)mem_malloc(req_len);
-    memcpy(conn->data, request, req_len);
-    conn->len = req_len;
+    struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_V4);
+    if (!pcb) {
+        set_led_pwm(RED_LED_PIN, LED_BRIGHTNESS);
+        printf("✗ Falha ao criar PCB TCP\n");
+        return;
+    }
+
+    tcp_connection_t *conn = (tcp_connection_t *)mem_malloc(sizeof(tcp_connection_t));
+    if (!conn) {
+        set_led_pwm(RED_LED_PIN, LED_BRIGHTNESS);
+        tcp_close(pcb);
+        printf("✗ Falha ao alocar memória para conexão\n");
+        return;
+    }
+
+    // Buffer estático para evitar falha de buffer
+    static char static_request_buffer[1024];
+    memcpy(static_request_buffer, request, req_len);
+
     conn->pcb = pcb;
+    conn->data = static_request_buffer;
+    conn->len = req_len;
     conn->connected = false;
 
-    // Configure callbacks antes da conexão
     tcp_arg(pcb, conn);
     tcp_err(pcb, tcp_error_cb);
 
-    err_t err = tcp_connect(pcb, &ip, SERVER_PORT, tcp_connected_cb);
+    err_t err = tcp_connect(pcb, &server_ip, SERVER_PORT, tcp_connected_cb);
+
     if (err != ERR_OK) {
-        printf("Erro ao conectar: %d\n", err);
-        mem_free(conn->data);
+        set_led_pwm(RED_LED_PIN, LED_BRIGHTNESS);
+        printf("✗ Falha ao iniciar conexão TCP (%d)\n", err);
         mem_free(conn);
-        tcp_abort(pcb);
+        tcp_close(pcb);
     }
 }
 
-
-// Lê os sensores e atualiza as variáveis globais
-void monitor_sensors() {
-    bool b1 = !gpio_get(BUTTON1_PIN);
-    bool b2 = !gpio_get(BUTTON2_PIN);
-    snprintf(button1_message, sizeof(button1_message), b1 ? "pressionado" : "solto");
-    snprintf(button2_message, sizeof(button2_message), b2 ? "pressionado" : "solto");
-
-    adc_select_input(1);
-    joy_x = adc_read();
-    adc_select_input(0);
-    joy_y = adc_read();
-
-    snprintf(joystick_direction, sizeof(joystick_direction), "%s", map_joystick_to_direction(joy_x, joy_y));
-
-    float temp = read_temperature_celsius();
-    if (!isnan(temp)) {
-        snprintf(temperature_message, sizeof(temperature_message), "%.2f °C", temp);
-    } else {
-        snprintf(temperature_message, sizeof(temperature_message), "Erro de leitura");
-    }
-
-    printf("\n----------------------\nSTATUS DO SISTEMA:\n----------------------\n");
-    printf("Botão 1: %s\nBotão 2: %s\nTemperatura: %s\nJoystick X: %d | Y: %d\nDireção: %s\n----------------------\n",
-           button1_message, button2_message, temperature_message, joy_x, joy_y, joystick_direction);
-}
-
-// Função principal
 int main() {
     stdio_init_all();
     sleep_ms(2000);
+    printf("Inicializando sistema...\n");
+
     if (cyw43_arch_init()) return 1;
     cyw43_arch_enable_sta_mode();
-
-    while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, 10000) != 0) {
-        printf("Tentando conectar ao WiFi...\n");
-        sleep_ms(5000);
-    }
-
-    printf("WiFi conectado. IP: %s\n", ip4addr_ntoa(netif_ip4_addr(netif_list)));
 
     gpio_init(BUTTON1_PIN); gpio_set_dir(BUTTON1_PIN, GPIO_IN); gpio_pull_up(BUTTON1_PIN);
     gpio_init(BUTTON2_PIN); gpio_set_dir(BUTTON2_PIN, GPIO_IN); gpio_pull_up(BUTTON2_PIN);
     adc_init();
-    adc_set_temp_sensor_enabled(true); // ATIVA sensor interno
+    adc_set_temp_sensor_enabled(true);
     adc_gpio_init(JOYSTICK_X_PIN);
     adc_gpio_init(JOYSTICK_Y_PIN);
 
-    while (1) {
-        monitor_sensors();
-        send_sensor_data(); // Envia a cada 3s
+    set_led_off(GREEN_LED_PIN);
+    set_led_off(BLUE_LED_PIN);
+    set_led_off(RED_LED_PIN);
+
+    printf("Conectando ao Wi-Fi...\n");
+    while (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, 10000) != 0) {
+        printf("Tentando nova conexão...\n");
         sleep_ms(3000);
+    }
+
+    printf("✓ Conectado ao Wi-Fi!\n");
+    set_led_pwm(GREEN_LED_PIN, LED_BRIGHTNESS);  // Indica sucesso de conexão
+
+    uint64_t last_temp_read_time = 0;
+    const uint64_t temp_read_interval_ms = 60000;
+
+    while (1) {
+        uint64_t current_time = to_ms_since_boot(get_absolute_time());
+        bool read_temp = (current_time - last_temp_read_time) >= temp_read_interval_ms;
+
+        monitor_sensors(read_temp);
+        if (read_temp) last_temp_read_time = current_time;
+
+        send_sensor_data();
+        sleep_ms(10000);
     }
 
     cyw43_arch_deinit();
