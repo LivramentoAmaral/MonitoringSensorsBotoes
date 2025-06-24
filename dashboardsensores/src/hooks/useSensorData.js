@@ -19,7 +19,7 @@ const useSensorData = () => {
 
   useEffect(() => {
     fetchDados();
-    const interval = setInterval(fetchDados, 5000);
+    const interval = setInterval(fetchDados, 1000);
     return () => clearInterval(interval);
   }, []);
 

@@ -19,9 +19,9 @@
 
 #define LED_BRIGHTNESS 0.3f  // 30% brilho
 
-#define WIFI_SSID "Marcos"
-#define WIFI_PASS "98765432"
-#define SERVER_IP "192.168.134.204"
+#define WIFI_SSID "Embarca"
+#define WIFI_PASS "EmbarcaTech01"
+#define SERVER_IP "10.8.45.128"
 #define SERVER_PORT 5000
 #define API_ENDPOINT "/api/sensores/"
 
@@ -61,6 +61,7 @@ const char* map_joystick_to_direction(int x, int y) {
     if (y < low) return "Sul";
     return "Centro";
 }
+
 
 // Lê a temperatura interna da RP2040 com média e offset para ambiente
 float read_temperature_celsius_ambient(int samples) {
@@ -279,7 +280,7 @@ int main() {
         if (read_temp) last_temp_read_time = current_time;
 
         send_sensor_data();
-        sleep_ms(10000);
+        sleep_ms(5000);
     }
 
     cyw43_arch_deinit();

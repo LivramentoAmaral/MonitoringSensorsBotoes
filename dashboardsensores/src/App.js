@@ -26,20 +26,21 @@ export default function App() {
             </Box>
           ) : (
             <>
-              <Grid container spacing={4}>
-                <Grid item xs={12} md={3}>
+              <Grid container spacing={6}>
+                <Grid item xs={12} sm={6} md={3}>
                   <BotaoCard titulo="Botão 1" valor={ultimo?.botao1} />
                 </Grid>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <BotaoCard titulo="Botão 2" valor={ultimo?.botao2} />
                 </Grid>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <TemperaturaCard valor={ultimo?.temperatura} />
                 </Grid>
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} sm={6} md={3}>
                   <DirecaoCard direcao={direcaoAnterior} />
                 </Grid>
               </Grid>
+
 
               <Box sx={{ mt: 6 }}>
                 <TemperatureChart dados={dados} />
